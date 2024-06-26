@@ -1,0 +1,30 @@
+this code looks like it should work to build a recommendation system using zero-shot classification and cosine similarity.
+
+A few key things it is doing:
+
+Using the HuggingFace Transformers pipeline to do zero-shot classification on user input to predict labels
+Preprocessing text data from a CSV with TF-IDF
+Calculating cosine similarities between user input labels and text data to find most similar items
+Rendering templates to display recommendations
+The use of Flask, templates, forms, pipelines, and NLP/recommendation techniques like TF-IDF and cosine similarity follow best practices.
+
+Some things that could be improved:
+
+--> Adding more error handling
+--> Caching TF-IDF matrix for performance
+--> Adding unit/integration tests
+--> Using a database instead of CSV for data
+
+But overall the logic and structure looks solid. As long as the data and models are set up correctly, 
+this should function as intended to provide personalized recommendations based on user input.
+
+**************************************************************
+1- ta7sin lalgorithme nlp (ya9ra fi les titles comme priorité)
+2- rendre questions algo dynamique 3ala kol submit
+3- make chat bot architect
+4- design
+5- heroku
+
+/*To add a blinking cursor (caret) to the input field, you can use CSS to define a custom caret style. Here's an example of how you can achieve this: " <style> /* Define the custom caret style */ input.u-full-width::placeholder { caret-color: red; animation: blink-caret is infinite; /* Set the blinking animation */ ]  /* Define the blinking animation */ @keyframes blink-caret { */
+
+for 3. ("make One submit button" / if yes if no / hidden parts)

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chatbot Interface</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css">
+  <style>
+    body {
+  /*background: #B3FFAB;
+  background: -webkit-linear-gradient(to left, #c1e1c1 , #e4eaea);
+  background: linear-gradient(to left, #a4b2a4 , #586966);  */
+  background-image: url('{{url_for("static", filename="/images/bg-5.png")}}') no-repeat; 
+  color:white;        
+}
+.avatar {
+  border: solid;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  float: right;
+  position:relative;
+  top:-8px;
+  background: url('https://www.shutterstock.com/image-vector/chatbot-robo-advisor-adviser-chat-600nw-1222464061.jpg') no-repeat;
+  background-size: contain;
+}
+
+    .input--text {
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    /* loading spinner */
+    
+.lds-default,
+.lds-default div {
+  box-sizing: border-box;
+}
+.lds-default {
+  display: inline-block;
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+.lds-default div {
+  position: absolute;
+  width: 6.4px;
+  height: 6.4px;
+  background: currentColor;
+  border-radius: 50%;
+  animation: lds-default 1.2s linear infinite;
+}
+.lds-default div:nth-child(1) {
+  animation-delay: 0s;
+  top: 36.8px;
+  left: 66.24px;
+}
+.lds-default div:nth-child(2) {
+  animation-delay: -0.1s;
+  top: 22.08px;
+  left: 62.29579px;
+}
+.lds-default div:nth-child(3) {
+  animation-delay: -0.2s;
+  top: 11.30421px;
+  left: 51.52px;
+}
+.lds-default div:nth-child(4) {
+  animation-delay: -0.3s;
+  top: 7.36px;
+  left: 36.8px;
+}
+.lds-default div:nth-child(5) {
+  animation-delay: -0.4s;
+  top: 11.30421px;
+  left: 22.08px;
+}
+.lds-default div:nth-child(6) {
+  animation-delay: -0.5s;
+  top: 22.08px;
+  left: 11.30421px;
+}
+.lds-default div:nth-child(7) {
+  animation-delay: -0.6s;
+  top: 36.8px;
+  left: 7.36px;
+}
+.lds-default div:nth-child(8) {
+  animation-delay: -0.7s;
+  top: 51.52px;
+  left: 11.30421px;
+}
+.lds-default div:nth-child(9) {
+  animation-delay: -0.8s;
+  top: 62.29579px;
+  left: 22.08px;
+}
+.lds-default div:nth-child(10) {
+  animation-delay: -0.9s;
+  top: 66.24px;
+  left: 36.8px;
+}
+.lds-default div:nth-child(11) {
+  animation-delay: -1s;
+  top: 62.29579px;
+  left: 51.52px;
+}
+.lds-default div:nth-child(12) {
+  animation-delay: -1.1s;
+  top: 51.52px;
+  left: 62.29579px;
+}
+@keyframes lds-default {
+  0%, 20%, 80%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+}
+
+/* Define the custom caret style */
+input.u-full-width::placeholder {
+    caret-color: rgb(42, 37, 37); /* Change the caret color to red */
+    animation: blink-caret 1s infinite; /* Set the blinking animation */
+  }
+
+  /* Define the blinking animation */
+  @keyframes blink-caret {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+
+  #t-rump{
+  width:200px;
+  vertical-align:middle;
+  position:absolute;
+  margin-left:-100px;
+  left:50%;
+  top:-173px;
+}
+#wrapper {
+  margin:220px auto 20px;
+  width:80%;
+  max-width:600px;
+  text-align: center;
+  position:relative;
+}
+#result{
+  margin:auto;
+  padding:30px 40px 20px;
+  font-size:1.1em;
+  line-height:1.2em
+}
+.container {
+  margin:auto;
+  display: flex;
+  justify-content: space-between;
+  color: #333;
+  border: 6px solid #43d0ca;
+  background:#fff;
+  width:100%;
+  max-width:600px;
+  border-radius:8px;
+  text-align: center;
+  vertical-align:middle;
+  margin: 20px 0 20px;
+}
+.button {
+  font-family: 'Spectral SC', arial, san-serif;
+  display: inline-block;
+  text-align: center;
+  text-weight:900;
+  padding:12px 15px;
+  cursor:pointer;
+	transition: all 350ms cubic-bezier(0.390, 0.500, 0.150, 1.360);
+	color: #fff;
+  background-image: linear-gradient(#64a3e3,#4483bd);
+	box-shadow: #333 0 0px 0px 0px inset;
+  border-radius:0 0 6px 6px;
+}
+
+.button:hover {
+	color: #fff;
+	box-shadow: #880000 0 0 0 40px inset;
+}
+.button.reset:hover {
+	color: #fff;
+	box-shadow: #333 0 0 0 40px inset;
+}
+#ask-input {
+  background: #e0e0e0;
+  color: #333;
+  box-sizing: border-box;
+  width:100%;
+  padding:14px 18px 14px;
+  margin:20px 0 0 0;
+  border:none;
+  border-bottom: 0;
+  display: inline-block;
+}
+#ask-input:focus {
+  outline: none;
+}
+#q-cont {
+  max-width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  padding:15px;
+}
+#quest-f {
+  max-width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  padding:15px;
+  border: 6px solid #43d0ca;
+}
+.animate-character {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-transform: uppercase;
+  font-size: 25px;
+  color: black;
+  
+}
+
+@keyframes textclip {
+  0% {
+    background-position: 0% center;
+  }
+  100% {
+    background-position: 100% center;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="row bottom-xs">
+            <div>
+      <div class="box-row">
+        <div > <a href="/" ><img src= "{{url_for('static', filename='/images/abcc.png')}}" alt="ab crystal collection" width="75px" height="75px" style="margin:auto;"> </a></div>
+      </div>
+    </div>
+    <h1 class="animate-charcter" style="max-width: fit-content;
+    margin-left: auto;
+    margin-right: auto;">You name it, We have it in Crystal!</h1>
+
+  <div class="container" id="q-cont">
+              <div>
+    <form method="POST" action="/question" id="questions-form">
+    <h2>Answer the following questions:</h2>
+    
+    <label for="emotions">What emotions or feelings would you like shown in your gift?</label>
+    <select name="emotions" id="emotions">
+      <option value="Love and romance">Love and romance</option>
+      <option value="Happiness and joy">Happiness and joy</option>
+      <option value="Peace and tranquility">Peace and tranquility</option>
+      <option value="Inspiration and motivation">Inspiration and motivation</option>
+      <option value="Sentimental and nostalgic">Sentimental and nostalgic</option>
+    </select>
+    
+    <label for="occasion">What is the occasion/event you need a gift for?</label>
+    <select name="occasion" id="occasion">
+      <option value="Birthday">Birthday</option>
+      <option value="Anniversary">Anniversary</option>
+      <option value="Housewarming">Housewarming</option>
+      <option value="Holiday celebration">Holiday celebration</option>
+      <option value="Other">Other</option>
+    </select>
+    
+    <!--<label for="interests">Could you please tell me about the hobbies and interests of the receiver?</label>
+    <input type="text" name="interests" id="interests">-->
+    
+    <label for="audience">Is the gift targeted for:</label>
+    <select name="audience" id="audience">
+      <option value="Child Audience">Child Audience</option>
+      <option value="Teen Audience">Teen Audience</option>
+      <option value="Adult Audience">Adult Audience</option>
+      <option value="Senior Audience">Senior Audience</option>
+    </select>
+    
+    <label for="personality">How would you describe your personal style and aesthetic preferences?</label>
+    <select name="personality" id="personality">
+        <option value="Casual and laid-back">Casual and laid-back</option>
+        <option value="Elegant and sophisticated">Elegant and sophisticated</option>
+        <option value="Edgy and avant-garde">Edgy and avant-garde</option>
+        <option value="Bohemian and free-spirited">Bohemian and free-spirited</option>
+        <option value="Classic and timeless">Classic and timeless</option>
+        <option value="Deconstructionist Design">Deconstructionist Design</option>
+        <option value="Motorhead Chic">Motorhead Chic</option>
+        <option value="Spiritual Stylista">Spiritual Stylista</option>
+        <option value="Narrative Garb">Narrative Garb</option>
+        <option value="Artisan Aesthetic">Artisan Aesthetic</option>
+        <option value="Anatomical Appeal">Anatomical Appeal</option>
+        <option value="Symbolic Style">Symbolic Style</option>
+        <option value="Cosmic Chic">Cosmic Chic</option>
+        <option value="Flora Fashion">Flora Fashion</option>
+        <option value="Animal Admirer">Animal Admirer</option>
+    </select>
+    <br>
+    <input type="submit" name="questions-submit" value="Submit" style="background-color: #43d0ca;color:white;">
+  </form>
+</div>
+
+<div class="col-xs-12 col-sm-6 col-md-6 col-lg-6">
+  <form method="POST" action="/nlp" id="myForm">
+     
+        <div class="col-xs-6 col-sm-6 col-md-8 col-lg-10" style="background: #B3FFAB;
+        background: -webkit-linear-gradient(to left, #c1e1c1 , #e4eaea);
+        background: linear-gradient(to left, #a4b2a4 , #586966); ">
+          <div class="box-row">
+            <div class="input--text">
+
+                <!-- Add this code to your index.html template -->
+                <div id="loading" style="display: none;" >
+                  <div class="lds-default" style="background: #B3FFAB;
+                  background: -webkit-linear-gradient(to left, #c1e1c1 , #e4eaea);
+                  background: linear-gradient(to left, #a4b2a4 , #586966);  "><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+                </div>
+  <div id="questions-res" style="display: none;">
+  
+  <!--  <p> <h2>Recommended products for you:</h2> </p>
+              <ul>
+                {% for title, url, image in questions_data %}
+                  <li style="align-items: center;">
+                    <a href="{{ url }}">
+                      {{ title }}
+                    </a> <br>
+                    <img src="{{ image }}" alt="{{ title }}" style="width:400px;height:400px;">
+                  </li>
+                {% endfor %}
+              </ul>
+
+            
+              <p>{{ user_input }}</p>
+              <p> Predicted Classes:</p>
+              <ul>
+                {% for label in predicted_labels %}
+                  <li>{{ loop.index }}. {{ label }}</li>
+                {% endfor %}
+              </ul>
+              <p> <h2>Recommended products for you:</h2> </p>
+              <ul>
+                {% for title, url, image in recommended_data %}
+                  <li style="align-items: center;">
+                    <a href="{{ url }}">
+                      {{ title }}
+                    </a> <br>
+                    <img src="{{ image }}" alt="{{ title }}" style="width:400px;height:400px;">
+                  </li>
+                {% endfor %}
+              </ul> -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row bottom-xs">
+      <!--<div class="avatar--col col-xs-12 col-sm-3 col-md-2 col-lg-1">
+        <div class="box-row">
+          <a href="#nlp">
+          <div class="avatar" style="position: fixed; left: 0; top: 71%;">
+          </div> </a>
+        </div>
+      </div>-->
+    <section id="nlp">
+      
+      <!-- new nlp input-->
+<div id="wrapper">
+  <image id="t-rump" src="https://t4.ftcdn.net/jpg/02/11/61/95/360_F_211619589_fnRk5LeZohVD1hWInMAQkWzAdyVlS5ox.jpg" >
+  <div id="quest-f">
+    <div id="result"> I m Your assistant That Help Pick Best Gift Available </div> 
+    <div id="result" style="display:none;">Loading ...</div>
+    <input id="ask-input" type="text" name="user_input" placeholder="Describe Your Gift Recipient / Interests" onkeypress="handleKeyPress(event)"> 
+   <input class="button-primary" name="nlp-submit" type="submit" value="Pick My Gift" style="background-color: #43d0ca; margin-top: 15px;">
+    
+  </div>
+</div>
+      <!-- new nlp input-->
+
+    </section>
+      
+    <!--<div class="col-xs-12 col-sm-3 col-md-2 col-lg-10">
+        <input class="button-primary" name="nlp-submit" type="submit" value="Send">
+      </div>-->
+
+    </div>
+      </div>
+    </form>
+
+  </div>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  //loading script
+
+  $(document).ready(function() {
+    $('#questions-form').submit(function(event) {
+
+      // Show the loading block
+      $('#loading').show();
+      $('#questions-res').show();
+      document.getElementById("questions-form").submit();
+
+    });
+  });
+
+// submit (enter key submit)
+
+function handleKeyPress(event) {
+    if (event.keyCode === 13) { // Check if the pressed key is Enter (key code 13)
+      event.preventDefault(); // Prevent the default Enter key behavior
+      document.getElementById("myForm").submit(); // Trigger the form submission
+    }
+  }
+
+</script>
+</body>
+</html>

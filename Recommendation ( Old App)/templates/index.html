@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Recommender</title>
+    <!-- Include CSS styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            background-image: url("{{ url_for('static', filename='N8HvqXY.gif') }}");
+           /* background-size: cover;*/
+            height: 100vh;
+            padding:0;
+            margin:0;
+           
+        }
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            text-align: center;
+        }
+        .chat-container{
+            max-width: 800px;
+            margin: 50px auto;
+            text-align: center;   
+        }
+        .questions {
+            max-width: 800px;
+            margin: 50px auto;
+            text-align: center;  
+        }
+        /* .questions-options { max-width:850px; margin: 60px auto; text-align: 50px 5px;}*/
+        h1 {
+            color: #333;
+        }
+        #chat {
+            text-align: center;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .question {
+            margin-bottom: 20px;
+        }
+        .question p {
+            color: #333;
+            font-weight: bold;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        #recommendations {
+            text-align: left;
+        }
+/* Horizontal scrolling/snapping styles */
+.scroll-off {
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  max-width: 580px;
+  margin: 50px auto;
+  text-align: center; 
+  width: 100%;
+  height: 70px;
+  -webkit-box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19),
+    0 6px 6px rgba(0, 0, 0, 0.23);
+  -moz-box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19),
+    0 6px 6px rgba(0, 0, 0, 0.23);
+  -ms-box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+  -o-box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+}
+
+.scroll-on {
+  position: relative;
+  overflow-x: scroll;
+  display: flex;
+  scroll-snap-type: x mandatory;
+  height: 100px;
+}
+
+ul {
+  display: flex;
+  width: auto;
+  height: 70px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  scroll-snap-align: start;
+  border-right: 1px solid grey;
+  line-height: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  width: 170px;
+  cursor: pointer;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+li.active {
+  background: lightblue;
+}
+
+/* Arrows */
+.scroll-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  opacity: 0;
+  color: #000;
+}
+.scroll-left {
+  left: 0;
+}
+.scroll-right {
+  right: 0;
+}
+.scroll-off:hover .scroll-overlay {
+  opacity: 1;
+}
+/* title animation */
+.animate-charcter
+{
+   text-transform: uppercase;
+  background-image: linear-gradient(
+    -225deg,
+    #000000 0%,
+    #403f41 29%,
+    #b5b3b3 67%,
+    #ffffff 100%
+  );
+  background-size: auto auto;
+  background-clip: border-box;
+  background-size: 200% auto;
+  color: #fff;
+  background-clip: text;
+  text-fill-color: transparent;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textclip 2s linear infinite;
+  display: inline-block;
+  font-size: 25px;
+}
+
+@keyframes textclip {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* center elements in scroll list */
+
+li {
+  /* Existing styles for the <li> element */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.image-container {
+  margin-bottom: 5px;
+}
+
+/* logo style */
+.logo-container {
+  position: absolute;
+  top: 1px;
+  left: 10px;
+}
+
+.logo {
+  width: 450px;
+  height: 150px;
+  max-width: 100%;
+  max-height: 100%;
+}
+.question:first-child {
+  display: block; 
+}
+.question {
+  display: none;
+}
+
+/* Styles for mobile devices only */
+@media only screen and (max-width: 767px) { /* Adjust breakpoint as needed */
+  button#submitButton {
+    margin-top: 3px;
+  }
+  .animate-charcter{
+    margin-top:85px;
+  }
+  
+}
+/* lineup text */
+.lineUp {
+  animation: 2s anim-lineUp ease-out;
+}
+@keyframes anim-lineUp {
+  0% {
+    opacity: 0;
+    transform: translateY(80%);
+  }
+  20% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(0%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0%);
+  }
+}
+
+/* recommendation style */
+.recommendations{
+    opacity: 1;
+}
+    </style>
+</head>
+<body>
+    <div class="logo-container">
+        <img src="https://i.imgur.com/IMTB9lz.png" alt="Logo" class="logo">
+      </div>
+    <div class="container">
+        <h1 class="animate-charcter">You name it, We have it in Crystal!</h1>
+        <div id="chat" class="chat-container">
+            <div class="line">
+            <p style="font-size: 15px; text-align: center;" class='lineUp'>Discover the artistry of our exquisite 3D engraved crystal products, tailored to help you find the perfect gift.</p>
+        </div>
+            <!-- Questions -->
+<form action="/recommend" method="POST">
+
+ <div id="questions" class="questions">
+                <div class="question">
+    <p>1. What is the occasion/event you need a gift for?</p>
+    <input type="hidden" name="occasions" id="occasions">
+    <div class="scroll-off" >
+        <span class="scroll-overlay scroll-left"> ◀ </span>
+        <span class="scroll-overlay scroll-right"> ▶ </span>
+        <div class="scroll-on" id="occasions">
+          <ul id="occasionsList">
+            <li class="active" onclick="selectOption('occasions', 'Birthday')">
+                <div class="image-container">
+                  <img src="https://i.imgur.com/NWIpRZ0.png" height="25px" width="25px" alt="Birthday">
+                </div>
+                <div class="text-container">
+                  Birthday
+                </div>
+              </li>
+              <li onclick="selectOption('occasions', 'Anniversary')">
+                <div class="image-container">
+                  <img src="https://i.imgur.com/4XrXUqF.png" height="25px" width="25px" alt="Anniversary">
+                </div>
+                <div class="text-container">
+                    Anniversary
+                </div>
+              </li>
+              <li onclick="selectOption('occasions', 'Housewarming')">
+                <div class="image-container">
+                  <img src="https://i.imgur.com/rW3kafo.png" height="25px" width="25px" alt="Housewarming">
+                </div>
+                <div class="text-container">
+                    Housewarming
+                </div>
+              </li>
+              <li onclick="selectOption('occasions', 'Holiday')">
+                <div class="image-container">
+                  <img src="https://i.imgur.com/x2j8hnW.png" height="25px" width="25px" alt="Holiday">
+                </div>
+                <div class="text-container">
+                    Holiday celebration
+                </div>
+              </li>
+              <li onclick="selectOption('occasions', 'Other')">
+                <div class="image-container">
+                  <img src="https://i.imgur.com/yTDZcLV.png" height="25px" width="25px" alt="Other">
+                </div>
+                <div class="text-container">
+                    Other
+                </div>
+              </li>
+           
+          </ul>
+        </div>
+      </div>
+      </div>
+                
+                <div class="question">
+                    <p>2. What emotions or feelings would you like shown in your gift?</p>
+                    <input type="hidden" name="emotions" id="emotions">
+                    <div class="scroll-off">
+                        <span class="scroll-overlay scroll-left"> ◀ </span>
+                        <span class="scroll-overlay scroll-right"> ▶ </span>
+                        <div class="scroll-on" id="emotions">
+                          <ul id="emotionsList">
+                            <li class="active" onclick="selectOption('emotions', 'Love')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/wBH2yUT.png" height="25px" width="25px" alt="Love">
+                                </div>
+                                <div class="text-container">
+                                    Love and romance
+                                </div>
+                              </li>
+                              <li onclick="selectOption('emotions', 'Happiness')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/P5lm2F7.png" height="25px" width="25px" alt="Happiness">
+                                </div>
+                                <div class="text-container">
+                                    Happiness and joy
+                                </div>
+                              </li>
+                              <li onclick="selectOption('emotions', 'Peace')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/dmYe6bH.png" height="25px" width="25px" alt="Peace">
+                                </div>
+                                <div class="text-container">
+                                    Peace and tranquility
+                                </div>
+                              </li>
+                              <li onclick="selectOption('emotions', 'Inspiration')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/97LjZVH.png" height="25px" width="25px" alt="Inspiration">
+                                </div>
+                                <div class="text-container">
+                                    Inspiration and motivation
+                                </div>
+                              </li>
+                              <li onclick="selectOption('emotions', 'Sentimental')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/5WMyzYp.png" height="25px" width="25px" alt="Sentimental">
+                                </div>
+                                <div class="text-container">
+                                    Sentimental and nostalgic
+                                </div>
+                              </li>
+                              <li onclick="selectOption('emotions', 'Other')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/yTDZcLV.png" height="25px" width="25px" alt="Other">
+                                </div>
+                                <div class="text-container">
+                                    Other
+                                </div>
+                              </li>
+                           
+                          </ul>
+                        </div>
+                      </div>
+                </div>
+                
+
+                <div class="question">
+                    <p>3. Is the gift targeted for:</p>
+                    <input type="hidden" name="audience" id="audience">
+                    <div class="scroll-off">
+                        <span class="scroll-overlay scroll-left"> ◀ </span>
+                        <span class="scroll-overlay scroll-right"> ▶ </span>
+                        <div class="scroll-on" id="audience">
+                          <ul id="audienceList">
+                            <li class="active" onclick="selectOption('audience', 'Child')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/CEgRyhs.png" height="25px" width="25px" alt="Child">
+                                </div>
+                                <div class="text-container">
+                                    Child Audience
+                                </div>
+                              </li>
+                              <li onclick="selectOption('audience', 'Teen')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/MhM7tGu.png" height="25px" width="25px" alt="Teen">
+                                </div>
+                                <div class="text-container">
+                                    Teen Audience
+                                </div>
+                              </li>
+                              
+                              <li onclick="selectOption('audience', 'Adult')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/m8VMp6M.png" height="25px" width="25px" alt="Adult">
+                                </div>
+                                <div class="text-container">
+                                    Adult Audience
+                                </div>
+                              </li>
+                              <li onclick="selectOption('audience', 'Senior')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/sui9e4h.png" height="25px" width="25px" alt="Senior">
+                                </div>
+                                <div class="text-container">
+                                    Senior Audience
+                                </div>
+                              </li>
+                          </ul>
+                        </div>
+                      </div>
+                </div>
+                
+                
+                <div class="question">
+                    <p>4. Could you please tell me about the hobbies and interests of the receiver?</p>
+                    <input type="hidden" name="interests" id="interests">
+                    <div class="scroll-off">
+                        <span class="scroll-overlay scroll-left"> ◀ </span>
+                        <span class="scroll-overlay scroll-right"> ▶ </span>
+                        <div class="scroll-on" id="interests">
+                            <ul id="interestsList">
+                                <li class="active" onclick="selectOption('interests', 'Animals')">
+                                    <div class="image-container">
+                                      <img src="https://i.imgur.com/C2WQ5fK.png" height="25px" width="25px" alt="Animals">
+                                    </div>
+                                    <div class="text-container">
+                                        Animals
+                                    </div>
+                                  </li>
+                                  <li onclick="selectOption('interests', 'Nature')">
+                                    <div class="image-container">
+                                      <img src="https://i.imgur.com/YGUkVtl.png" height="25px" width="25px" alt="Nature">
+                                    </div>
+                                    <div class="text-container">
+                                        Nature
+                                    </div>
+                                  </li>
+                                  <li onclick="selectOption('interests', 'Quotes')">
+                                    <div class="image-container">
+                                      <img src="https://i.imgur.com/Gtkt2KK.png" height="25px" width="25px" alt="Quotes">
+                                    </div>
+                                    <div class="text-container">
+                                        Inspiring quotes
+                                    </div>
+                                  </li>
+                                  <li onclick="selectOption('interests', 'Art')">
+                                    <div class="image-container">
+                                      <img src="https://i.imgur.com/ZfKDo23.png" height="25px" width="25px" alt="Art">
+                                    </div>
+                                    <div class="text-container">
+                                        Art/Design
+                                    </div>
+                                  </li>
+                                  <li onclick="selectOption('interests', 'Architecture')">
+                                    <div class="image-container">
+                                      <img src="https://i.imgur.com/btLyJqZ.png" height="25px" width="25px" alt="Architecture">
+                                    </div>
+                                    <div class="text-container">
+                                        Architecture
+                                    </div>
+                                  </li>
+                                  <li onclick="selectOption('interests', 'Zodiac')">
+                                    <div class="image-container">
+                                      <img src="https://i.imgur.com/K9t7ZNb.png" height="25px" width="25px" alt="Zodiac">
+                                    </div>
+                                    <div class="text-container">
+                                        Zodiac
+                                    </div>
+                                  </li>
+                            <li onclick="selectOption('interests', 'Other')">
+                                <div class="image-container">
+                                  <img src="https://i.imgur.com/yTDZcLV.png" height="25px" width="25px" alt="Other">
+                                </div>
+                                <div class="text-container">
+                                    Other
+                                </div>
+                              </li>
+                        </ul>
+                    </div>
+                  </div>
+            </div>
+                
+                
+                <div class="question">
+                    <p>5. How would you describe your personal style and aesthetic preferences?</p>
+                    <input type="hidden" name="personality" id="personality">
+                    <div class="scroll-off">
+                        <span class="scroll-overlay scroll-left"> ◀ </span>
+                        <span class="scroll-overlay scroll-right"> ▶ </span>
+                        <div class="scroll-on" id="personality">
+                            <ul id="personalityList">
+                            <li class="active" onclick="selectOption('personality', 'Casual and laid-back')">Casual and laid-back</li>
+                            <li onclick="selectOption('personality', 'Elegant and sophisticated')">Elegant and sophisticated</li>
+                            <li onclick="selectOption('personality', 'Edgy and avant-garde')">Edgy and avant-garde</li>
+                            <li onclick="selectOption('personality', 'Bohemian and free-spirited')">Bohemian and free-spirited</li>
+                            <li onclick="selectOption('personality', 'Classic and timeless')">Classic and timeless</li>
+                        </ul>
+                    </div>
+                  </div>
+                </div>
+             
+            
+                
+            </div>
+            <div class="buttons" style="text-align: center;">
+                <button id="nextButton" class="next-button" onclick="showNextQuestion()">Next</button>
+                <button id="previousButton" class="previous-button" onclick="showPreviousQuestion()">Previous</button>
+                <button id="submitButton" class="submit-button" onclick="showRecommendations();" type="submit">Get Recommendations</button>
+                
+
+
+
+              </div>
+            </form>
+        </div>
+        
+        </div>
+        
+        <!-- Recommendations -->
+
+        <div id="recommendations" class="recommendations">
+          {% for i in range(product_ids|length) %}
+
+          <div class="recommendation">
+          <p>Product ID: {{ product_ids[i]  }}</p> 
+          <p>Title: {{ product_titles[i] }}</p>
+          </div>
+
+          {% endfor %}
+          <!--
+            <div class="container" id="chat" style="width: 770px;">
+            <div class="scroll-off" style="height:350px;">
+                
+                <div class="scroll-on" id="emotions" style="height:450px;margin-top: 50px;padding-top:105px ;margin-left:25px ;">
+                  <ul>
+                    <li >
+                        <div class="image-container">
+                          <img src="https://i.imgur.com/nQLNTJ6.jpeg" height="200px" width="200px" alt=" Aquarius">
+                        </div>
+                        <div class="text-container">
+                            Aquarius Zodiac Sign 3D Engraved Crystal Keepsake Gift
+                        </div><br>
+                        <button id="submitButton" class="submit-button" disabled><a src="https://abcrystalcollection.ca/products/aquarius-zodiac-sign-3d-engraved-crystal-keepsake-gift?utm_source=copyToPasteBoard&utm_medium=product-links&utm_content=web">Shop Now</a></button>
+                      </li>
+                      <li>
+                        <div class="image-container">
+                          <img src="https://i.imgur.com/Ssc7Q9Z.jpeg" height="200px" width="200px" alt="Aries">
+                        </div>
+                        <div class="text-container">
+                            Aries Zodiac Sign 3D Engraved Crystal Keepsake Gift
+                        </div><br>
+                        <button id="submitButton" class="submit-button" disabled><a src="https://abcrystalcollection.ca/products/aries-zodiac-sign-3d-engraved-crystal-keepsake-gift?utm_source=copyToPasteBoard&utm_medium=product-links&utm_content=web">Shop Now</a></button>
+                      </li>
+                      <li>
+                        <div class="image-container">
+                          <img src="https://i.imgur.com/Us2qKg5.jpeg" height="200px" width="200px" alt="Cancer">
+                        </div>
+                        <div class="text-container">
+                            Cancer Zodiac Sign 3D Engraved Crystal Keepsake Gift
+                        </div><br>
+                        <button id="submitButton" class="submit-button" disabled><a src="https://abcrystalcollection.ca/products/cancer-zodiac-sign-3d-engraved-crystal-keepsake-gift?utm_source=copyToPasteBoard&utm_medium=product-links&utm_content=web">Shop Now</a></button>
+                        </li>
+                      
+                  </ul>
+                </div>
+              </div>
+            </div> --> 
+        </div>
+    </div>
+    </div>
+  
+    <!-- Include JavaScript -->
+    <!--<script src="{{ url_for('static', filename='script.js') }}"></script>-->
+    <!-- send responses script -->
+    <script>
+      function selectOption(question, value) {
+  document.getElementById(question).value = value;
+}
+    </script>
+    <!-- options scroll script -->
+    <script>
+        // JS needed for scroll
+
+const scrollBox = document.querySelector(".scroll-on");
+const overlays = document.querySelectorAll(".scroll-overlay");
+
+const leftOverlay = Array.from(overlays).find(item => {
+  return item.nextElementSibling && item.nextElementSibling.className === "scroll-overlay";
+});
+const rightOverlay = Array.from(overlays).find(item => {
+  return item.previousElementSibling && item.previousElementSibling.className === "scroll-overlay";
+});
+const scrollItem = document.querySelector("ul");
+const panelItems = document.querySelectorAll("li");
+const disableActives = itemList => {
+  itemList.forEach(item => {
+    item.classList.remove("active");
+  });
+};
+const onItemClick = ({ target }) => {
+  target.scrollIntoView({
+    behavior: "smooth",
+    block: "nearest",
+    inline: "center"
+  });
+  if (!target.classList.contains("active")) {
+    disableActives(panelItems);
+    target.classList.add("active");
+  }
+};
+panelItems.forEach(item => {
+  item.addEventListener("click", onItemClick);
+});
+
+// Show/Hide scroll overlays
+function debounce(func, wait, immediate) {
+  var timeout;
+  return function() {
+    var context = this,
+      args = arguments;
+    var later = function() {
+      timeout = null;
+      if (!immediate) func.apply(context, args);
+    };
+    var callNow = immediate && !timeout;
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+    if (callNow) func.apply(context, args);
+  };
+}
+
+//function debounce(func,wait,immediate) {
+// var timeout;
+// return function() {
+    // var context = this;
+        //args = arguments;
+    //var later = function() {
+        //timeout = null;
+        //if (!immediate) func.apply(context, args);
+    //};
+    //var callNow = immediate && !timeout;
+    //clearTimeout(timeout);
+    //timeout = setTimeout(later, wait);
+    //if (callNow) func.apply(context,args); 
+//};
+//}
+//const leftOverlayVisibility = visible => {
+    //leftOverlay.style.opacity = visible ? 1 :0;
+//};
+//const rightOverlayVisibility = visible => {
+    //rightOverlay.style.opacity = visible ? 1 :0;
+//};
+const leftOverlayVisibility = visible => {
+  leftOverlay.style.opacity = visible ? 1 : 0;
+};
+const rightOverlayVisibility = visible => {
+  rightOverlay.style.opacity = visible ? 1 : 0;
+};
+const controlOverlays = () => {
+  if (scrollBox.scrollLeft === 0) {
+      leftOverlayVisibility(false);
+    } else {
+      leftOverlayVisibility(true);
+    }
+    if (
+      scrollBox.scrollLeft ===
+      scrollItem.scrollWidth - scrollBox.clientWidth
+    ) {
+      rightOverlayVisibility(false);
+    } else {
+      rightOverlayVisibility(true);
+    }
+}
+controlOverlays();
+scrollBox.addEventListener(
+  "scroll",
+  debounce(controlOverlays, 50)
+);
+
+
+
+
+// JS Code needed for Next buttons
+document.getElementById("questions").children[0].style.display = "block";
+function showNextQuestion() {
+  e.preventDefault();
+  const questions = document.querySelectorAll(".question");
+  let currentQuestionIndex = 0;
+
+  // Find the index of the currently displayed question
+  for (let i = 0; i < questions.length; i++) {
+    if (questions[i].style.display === "block") {
+      currentQuestionIndex = i;
+      break;
+    }
+  }
+
+  // Handle "Next" button behavior
+  if (currentQuestionIndex < questions.length - 1) {
+    // Hide the current question and show the next one
+    questions[currentQuestionIndex].style.display = "none";
+    currentQuestionIndex++;
+    questions[currentQuestionIndex].style.display = "block";
+  } else {
+    // Disable the Next button if it's the last question
+    document.getElementById("nextButton").disabled = true;
+  }
+}
+
+function showPreviousQuestion() {
+  e.preventDefault();
+  const questions = document.querySelectorAll(".question");
+  let currentQuestionIndex = 0;
+
+  // Find the index of the currently displayed question
+  for (let i = 0; i < questions.length; i++) {
+    if (questions[i].style.display === "block") {
+      currentQuestionIndex = i;
+      break;
+    }
+  }
+
+  // Handle "Previous" button behavior
+  if (currentQuestionIndex > 0) {
+    // Hide the current question and show the previous one
+    questions[currentQuestionIndex].style.display = "none";
+    currentQuestionIndex--;
+    questions[currentQuestionIndex].style.display = "block";
+    // Enable the Next button if it was disabled
+    document.getElementById("nextButton").disabled = false;
+  } else {
+    // Disable the Previous button if it's the first question
+    document.getElementById("previousButton").disabled = true;
+  }
+}
+
+//display recommendations
+function showRecommendations() {
+  
+    // Show recommendations
+    document.querySelector(".recommendations").style.opacity = 100;
+}
+
+
+
+    </script>
+</body>
+</html>
