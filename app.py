@@ -1,4 +1,9 @@
 import re
+import nltk
+nltk.download('wordnet')
+nltk.download('stopwords')
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
 from flask import Flask, render_template, request
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -46,12 +51,24 @@ def questions():
 
         # Preprocess user answers
         def preprocess_text(text):
-            # Remove HTML tags
+            # Suppression des balises HTML
             text = re.sub(r'<[^>]*>', '', text)
-            # Remove HTML entities
+            # Suppression des entités HTML
             text = re.sub(r'&[^;]*;', '', text)
-            # Convert to lowercase
+            # Suppression des caractères non alphabétiques
+            text = re.sub(r'[^a-zA-Z]', ' ', text)
+            # Passage en minuscules
             text = text.lower()
+            # Lemmatisation
+            lemmatizer = WordNetLemmatizer()
+            words = text.split()
+            lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
+            text = ' '.join(lemmatized_words)
+            # Filtrage des mots vides
+            stop_words = set(stopwords.words('english'))
+            words = text.split()
+            filtered_words = [word for word in words if word not in stop_words]
+            text = ' '.join(filtered_words)
             return text
 
         # Load data from CSV
@@ -120,12 +137,24 @@ def nlp():
 
 #pre-process data
         def preprocess_text(text):
-    # Remove HTML tags
+            # Suppression des balises HTML
             text = re.sub(r'<[^>]*>', '', text)
-    # Remove HTML entities
+            # Suppression des entités HTML
             text = re.sub(r'&[^;]*;', '', text)
-    # Convert to lowercase
+            # Suppression des caractères non alphabétiques
+            text = re.sub(r'[^a-zA-Z]', ' ', text)
+            # Passage en minuscules
             text = text.lower()
+            # Lemmatisation
+            lemmatizer = WordNetLemmatizer()
+            words = text.split()
+            lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
+            text = ' '.join(lemmatized_words)
+            # Filtrage des mots vides
+            stop_words = set(stopwords.words('english'))
+            words = text.split()
+            filtered_words = [word for word in words if word not in stop_words]
+            text = ' '.join(filtered_words)
             return text
 
         data["preprocessed_description"] = data["Description"].apply(preprocess_text)
