@@ -131,6 +131,21 @@ def nlp():
                     break
 
         processed_classes = " ".join(processed_classes)  # Join all labels into a single line
+        """
+        The role of the classifier function (zero shot) in the provided code is to classify the user's input text into relevant categories or labels. It performs a zero-shot classification, which means it can classify the text into categories that were not seen during training by leveraging a pre-trained model's knowledge.
+
+        Here's a breakdown of how the classifier function is used in the code:
+
+        The classifier function is called with the user_input text and a list of labels (labels) specific to a certain category. 
+        The classifier function returns a result that contains the predicted labels for the given text.
+        The predicted labels are then iterated through in the for loop. The loop checks if a label has already been seen 
+        (label not in seen_categories). If the label is new, it is appended to the predicted_labels list and the processed_classes list. 
+        The purpose of the processed_classes list is to store all the unique labels that have been predicted for later use.
+        After iterating through all the categories, the processed_classes list is joined into a single line using " ".join(processed_classes). 
+        This creates a string representation of all the unique labels predicted for the user's input.
+        The processed_classes string is then used in subsequent steps for similarity calculations and generating recommended products.
+        """
+        
         # Load data from CSV
         data = pd.read_csv("output.csv")
         data["Description"] = data["Description"].astype(str)
