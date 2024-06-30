@@ -198,4 +198,4 @@ def nlp():
     #recommended_p = data.iloc[top_indiceshil]
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
