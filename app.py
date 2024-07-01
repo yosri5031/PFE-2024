@@ -1,7 +1,5 @@
 import re
 import nltk
-nltk.download('wordnet')
-nltk.download('stopwords')
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from flask import Flask, render_template, request
@@ -9,19 +7,21 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import pipeline
 import pandas as pd
-import random 
 
+# Download required NLTK data
+nltk.download('wordnet', quiet=True)
+nltk.download('stopwords', quiet=True)
 
 app = Flask(__name__)
 
-# Load the zero-shot classification pipeline with a pre-trained model
-# the origin model https://huggingface.co/facebook/bart-large-mnli
-classifier = pipeline("zero-shot-classification")
+# Global variables
+data = None
+vectorizer = None
+tfidf_matrix = None
 
-#Classifier = pipeline("facebook/bart-model")
-#model = KNN.new()
-#model.add(Dense=3,method="Adam")
-#model.add(Dense=2,method="Adam")
+# Load the zero-shot classification pipeline
+classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+
 # Predefined options for each preference category
 options = {
     "emotions": ["Love and romance", "Happiness and joy", "Peace and tranquility", "Inspiration and motivation", "Sentimental and nostalgic"],
@@ -34,59 +34,57 @@ options = {
 # Order of the categories
 category_order = ["emotions", "occasion", "interests", "audience", "personality"]
 
+def preprocess_text(text):
+    # Remove HTML tags
+    text = re.sub(r'<[^>]*>', '', text)
+    # Remove HTML entities
+    text = re.sub(r'&[^;]*;', '', text)
+    # Remove non-alphabetic characters
+    text = re.sub(r'[^a-zA-Z]', ' ', text)
+    # Convert to lowercase
+    text = text.lower()
+    # Lemmatization
+    lemmatizer = WordNetLemmatizer()
+    words = text.split()
+    lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
+    text = ' '.join(lemmatized_words)
+    # Filter stop words
+    stop_words = set(stopwords.words('english'))
+    words = text.split()
+    filtered_words = [word for word in words if word not in stop_words]
+    text = ' '.join(filtered_words)
+    return text
+
+def initialize_data():
+    global data, vectorizer, tfidf_matrix
+    data = pd.read_csv("output.csv")
+    data["Description"] = data["Description"].astype(str)
+    data["preprocessed_description"] = data["Description"].apply(preprocess_text)
+    data["preprocessed_title"] = data["Title"].apply(preprocess_text)
+    data["preprocessed_text"] = data.apply(lambda row: " ".join(set(str(row["preprocessed_title"]).split() + str(row["preprocessed_description"]).split())), axis=1)
+
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform(data["preprocessed_text"])
+
 @app.route("/")
 def home():    
     return render_template("index.html")
 
-@app.route('/question', methods=['GET', 'POST'])
+@app.route('/questions', methods=['POST'])
 def questions():
     if request.method == 'POST':
-        inputs = list(request.form.values())
-        random.shuffle(inputs)
+        initialize_data()
         emotions = request.form['emotions']
         occasion = request.form['occasion']
-        #interests = request.form['interests']
+        interests = request.form['interests']
         audience = request.form['audience']
         personality = request.form['personality']
 
-        # Preprocess user answers
-        def preprocess_text(text):
-            # Suppression des balises HTML
-            text = re.sub(r'<[^>]*>', '', text)
-            # Suppression des entités HTML
-            text = re.sub(r'&[^;]*;', '', text)
-            # Suppression des caractères non alphabétiques
-            text = re.sub(r'[^a-zA-Z]', ' ', text)
-            # Passage en minuscules
-            text = text.lower()
-            # Lemmatisation
-            lemmatizer = WordNetLemmatizer()
-            words = text.split()
-            lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
-            text = ' '.join(lemmatized_words)
-            # Filtrage des mots vides
-            stop_words = set(stopwords.words('english'))
-            words = text.split()
-            filtered_words = [word for word in words if word not in stop_words]
-            text = ' '.join(filtered_words)
-            return text
-
-        # Load data from CSV
-        data = pd.read_csv("output.csv")
-        data["Description"] = data["Description"].astype(str)
-        data["preprocessed_description"] = data["Description"].apply(preprocess_text)
-        data["preprocessed_title"] = data["Title"].apply(preprocess_text)
-        data["preprocessed_text"] = " ".join(set(str(data["preprocessed_title"]).split() + str(data["preprocessed_description"]).split()))
-
-        # Create TF-IDF matrix
-        vectorizer = TfidfVectorizer()
-        tfidf_matrix = vectorizer.fit_transform(data["preprocessed_text"])
-
-        # Store answers in a list
-        answers = [emotions, occasion,audience, personality]
+        # Combine all inputs into a single string
+        all_text = f"{emotions} {occasion} {interests} {audience} {personality}"
 
         # Preprocess user answers
-        preprocessed_answers = preprocess_text(" ".join(answers))
+        preprocessed_answers = preprocess_text(all_text)
 
         # Calculate similarity with user answers (cosine similarity)
         answers_vector = vectorizer.transform([preprocessed_answers])
@@ -95,17 +93,14 @@ def questions():
 
         # Rank and display recommended products
         recommended_products = data.iloc[top_indices]
-        titles = recommended_products["Title"].tolist()  # Get the recommended titles as a list
-        urls = recommended_products["URL (Web)"].tolist()  # Get the recommended urls as a list
-        images = recommended_products["Image 1"].tolist()  # Get the recommended images as a list
+        titles = recommended_products["Title"].tolist()
+        urls = recommended_products["URL (Web)"].tolist()
+        images = recommended_products["Image 1"].tolist()
 
-        # Prepare the data to pass to the template
-        if 'questions-submit' in request.form:
-            # Process questions form submission
-            return render_template('index2.html', questions_data=zip(titles, urls, images), preprocessed_answers=preprocessed_answers)
+        return render_template('index2.html', questions_data=zip(titles, urls, images), preprocessed_answers=preprocessed_answers)
     
-    # Render the form template for GET requests or other cases
-    return render_template('index2.html')
+    # This line should never be reached as we're only allowing POST requests
+    return "Method not allowed", 405
 
 
 @app.route('/nlp', methods=['GET', 'POST'])
@@ -198,4 +193,4 @@ def nlp():
     #recommended_p = data.iloc[top_indiceshil]
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
