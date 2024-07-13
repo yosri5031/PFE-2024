@@ -238,16 +238,59 @@ input.u-full-width::placeholder {
   <div class="row bottom-xs">
             <div>
       <div class="box-row">
-        <div > <a href="/" ><img src= "{{url_for('static', filename='/images/abcc.png')}}" alt="ab crystal collection" width="75px" height="75px" style="margin:auto;"> </a></div>
+        <div > <a href="/" ><img src= "{{url_for('static', filename='/images/abcc.png')}}" alt="ab crystal collection" width="125px" height="125px" style="margin:auto;"> </a></div>
       </div>
     </div>
-    <h1 class="animate-charcter" style="max-width: fit-content;
-    margin-left: auto;
-    margin-right: auto;">You name it, We have it in Crystal!</h1>
-
+    <div class="recommendation-engine">
+      <h1 class="animated-title">3D Products Recommendation Engine</h1>
+      <h2 class="subtitle">Intelligent Matching for Enhanced User Experience</h2>
+      
+      
+    </div>
+    
+    <style>
+    @keyframes colorTransition {
+      0% { color: black; }
+      50% { color: gray; }
+      100% { color: white; }
+    }
+    
+    .animated-title {
+      font-size: 3em;
+      font-weight: bold;
+      text-align: center;
+      animation: colorTransition 3s linear infinite alternate;
+      background-color: #333;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    
+    .subtitle {
+      font-size: 1.5em;
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+    
+    .code-explanation {
+      background-color: #f5f5f5;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .code-explanation ol {
+      margin-left: 20px;
+    }
+    
+    .code-explanation li {
+      margin-bottom: 10px;
+    }
+    </style>
   <div class="container" id="q-cont">
               <div>
-    <form method="POST" action="/question" id="questions-form">
+    <!--<form method="POST" action="/question" id="questions-form">-->
+    <form action="/questions" method="post">
     <h2>Answer the following questions:</h2>
     
     <label for="emotions">What emotions or feelings would you like shown in your gift?</label>
@@ -265,11 +308,11 @@ input.u-full-width::placeholder {
       <option value="Anniversary">Anniversary</option>
       <option value="Housewarming">Housewarming</option>
       <option value="Holiday celebration">Holiday celebration</option>
-      <option value="Other">Other</option>
     </select>
     
-    <!--<label for="interests">Could you please tell me about the hobbies and interests of the receiver?</label>
-    <input type="text" name="interests" id="interests">-->
+    <label for="interests">Could you please tell me about the hobbies and interests of the receiver?</label>
+    <input type="text" name="interests" id="interests">
+    <div id="errorMsg" style="font-size:16px;color:red;"></div>
     
     <label for="audience">Is the gift targeted for:</label>
     <select name="audience" id="audience">
@@ -298,12 +341,12 @@ input.u-full-width::placeholder {
         <option value="Animal Admirer">Animal Admirer</option>
     </select>
     <br>
-    <input type="submit" name="questions-submit" value="Submit" style="background-color: #43d0ca;color:white;">
+    <button type="submit" name="questions-submit" style="background-color: #43d0ca;color:white;"> Submit </button>
   </form>
 </div>
 
 <div class="col-xs-12 col-sm-6 col-md-6 col-lg-6">
-  <form method="POST" action="/nlp" id="myForm">
+  <form method="POST" action="/nlp" id="myForm" onsubmit="return submitForm()">
      
         <div class="col-xs-6 col-sm-6 col-md-8 col-lg-10" style="background: #B3FFAB;
         background: -webkit-linear-gradient(to left, #c1e1c1 , #e4eaea);
@@ -372,7 +415,8 @@ input.u-full-width::placeholder {
     <div id="result"> I m Your assistant That Help Pick Best Gift Available </div> 
     <div id="result" style="display:none;">Loading ...</div>
     <input id="ask-input" type="text" name="user_input" placeholder="Describe Your Gift Recipient / Interests" onkeypress="handleKeyPress(event)"> 
-   <input class="button-primary" name="nlp-submit" type="submit" value="Pick My Gift" style="background-color: #43d0ca; margin-top: 15px;">
+    <div id="ERRMSG" style="font-size:16px;color:red;"></div>
+    <button class="button-primary" name="nlp-submit" type="submit" value="Pick My Gift" style="background-color: #43d0ca; margin-top: 15px;"> Pick My Gift </button>
     
   </div>
 </div>
@@ -391,6 +435,25 @@ input.u-full-width::placeholder {
   </div>
   </div>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    // input text errors
+const interestsInput = document.getElementById('interests');
+const NLPInput = document.getElementById('ask-input');
+const submitButton = document.querySelector('button[type="submit"]');
+const errorMsg = document.getElementById('errorMsg');
+const ERRMSG = document.getElementById('ERRMSG');
+
+submitButton.addEventListener('click', function(e) {
+  if(!interestsInput.value) {
+    e.preventDefault();
+    interestsInput.classList.add('error');
+    errorMsg.innerText = "Please enter interests";
+  }
+  
+
+})
+
+  </script>
 <script>
   //loading script
 
@@ -410,9 +473,35 @@ input.u-full-width::placeholder {
 function handleKeyPress(event) {
     if (event.keyCode === 13) { // Check if the pressed key is Enter (key code 13)
       event.preventDefault(); // Prevent the default Enter key behavior
+
+      // Add validation
+    const input = document.getElementById('ask-input');
+    const ERRMSG = document.getElementById('ERRMSG');
+
+    if(!input.value) {
+      ERRMSG.innerText = "Please enter a description";
+      return;
+    }
+
       document.getElementById("myForm").submit(); // Trigger the form submission
     }
   }
+
+  function submitForm() {
+
+// Validation
+const input = document.getElementById('ask-input');
+const ERRMSG = document.getElementById('ERRMSG');
+
+if(!input.value) {
+  ERRMSG.innerText = "Please enter a description";
+  return false; // return false to prevent submit
+}
+
+// Submit form if valid
+return true;
+
+}
 
 </script>
 </body>
