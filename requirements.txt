@@ -1,9 +1,12 @@
 Flask==2.2.2
-Werkzeug==2.3.7
-gunicorn
+Werkzeug==2.2.2
+gunicorn==19.7.1 
 pandas==1.5.3
 scikit_learn==1.2.1
 transformers==4.40.2
 numpy==1.21.0
 nltk
 transformers
+-f https://download.pytorch.org/whl/torch_stable.html
+torch==1.11.0+cpu 
+torchvision
