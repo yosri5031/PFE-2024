@@ -100,7 +100,7 @@ def questions():
         personality = request.form['personality']
 
         # Combine all inputs into a single string
-        all_text = f"{emotions} {occasion} {interests} {audience} {personality}"
+        all_text = f" {interests} {interests}  {occasion}  {audience} {personality} {emotions} "
 
         # Preprocess user answers
         preprocessed_answers = preprocess_text(all_text)
@@ -192,4 +192,4 @@ def nlp():
         
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
