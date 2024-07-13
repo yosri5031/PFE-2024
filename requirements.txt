@@ -1,4 +1,5 @@
 Flask==2.2.2
+Werkzeug
 gunicorn
 pandas==1.5.3
 scikit_learn==1.2.1
