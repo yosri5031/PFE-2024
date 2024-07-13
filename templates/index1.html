@@ -122,7 +122,7 @@
   <div class="row bottom-xs">
     <div class="avatar--col col-xs-12 col-sm-3 col-md-2 col-lg-1">
       <div class="box-row">
-        <div > <a href="/" ><img src= "{{url_for('static', filename='/images/abcc.png')}}" alt="ab crystal collection" width="150px" height="150px" style="margin:auto;"> </a></div>
+        <div > <a href="/" ><img src= "{{url_for('static', filename='/images/abcc.png')}}" alt="ab crystal collection" width="125px" height="125px" style="margin:auto;"> </a></div>
       </div>
     </div>
   <div class="container">
@@ -210,6 +210,7 @@
   
                 <div id="questions-res" style="background-color: white !important;">
               <p>{{ user_input }}</p>
+              <b> {{ weighted_processed_classes }}</b>
               <p> Predicted Classes:</p>
               <ul style="display: flex; flex-wrap: wrap;">
                 {% for label in predicted_labels %}
