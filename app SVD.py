@@ -5,9 +5,10 @@ from nltk.corpus import stopwords
 from flask import Flask, render_template, request
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.neighbors import NearestNeighbors
 from transformers import pipeline
 import pandas as pd
+import numpy as np
+from scipy.sparse.linalg import svds
 
 # Download required NLTK data
 nltk.download('wordnet', quiet=True)
@@ -19,7 +20,6 @@ app = Flask(__name__)
 data = None
 vectorizer = None
 tfidf_matrix = None
-nn_model = None
 
 # Load the zero-shot classification pipeline
 classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
@@ -57,33 +57,20 @@ def preprocess_text(text):
     text = ' '.join(filtered_words)
     return text
 
-exclude_words = {"LED light", "lamp", "Figurine", "Collectible", 
-                 "Crystal", "Decoration", "Home decor", "3D engraved", 
-                 "Novelty", "Keepsake", "Gift", "Decor", "Souvenir"} 
-def preprocess_tags(tags):
-  tags = str(tags)  #convert to string if there are numbers or float
-  tags = tags.strip() #remove only whitespaces from the start and end of the string
-  tags = tags.lower() #minuscule
-  tags = re.sub(",","",tags) # remove commas
-  tags = " ".join([word for word in tags.split() 
-                   if word not in exclude_words])
-  return tags
-
 def initialize_data():
-    global data, vectorizer, tfidf_matrix,nn_model
+    global data, vectorizer, tfidf_matrix, tfidf_svd
     data = pd.read_csv("output.csv")
     data["Description"] = data["Description"].astype(str)
     data["preprocessed_description"] = data["Description"].apply(preprocess_text)
     data["preprocessed_title"] = data["Title"].apply(preprocess_text)
-    data["preprocessed_tags"] = data["Tags"].apply(preprocess_tags)
-    data["preprocessed_text"] = data.apply(lambda row: " ".join(set(str(row["preprocessed_tags"]).split() + str(row["preprocessed_title"]).split() + str(row["preprocessed_description"]).split())), axis=1)
-    # Create TF-IDF matrix - expliquer ici : https://imgur.com/Zn4rxWS
-
+    data["preprocessed_text"] = data.apply(lambda row: " ".join(set(str(row["preprocessed_title"]).split() + str(row["preprocessed_description"]).split())), axis=1)
+    # Create TF-IDF matrix
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(data["preprocessed_text"])
-    # Create and fit the NearestNeighbors model
-    nn_model = NearestNeighbors(metric='cosine')
-    nn_model.fit(tfidf_matrix)
+    # Perform SVD on the TF-IDF matrix
+    k = 100  # Number of singular values to keep
+    u, s, vt = svds(tfidf_matrix, k=k)
+    tfidf_svd = u.dot(np.diag(s)).dot(vt)
 
 @app.route("/")
 def home():    
@@ -104,15 +91,14 @@ def questions():
 
         # Preprocess user answers
         preprocessed_answers = preprocess_text(all_text)
+        
+        # Calculate similarity with user answers (cosine similarity)
+        answers_vector = vectorizer.transform([preprocessed_answers])
+        similarities = cosine_similarity(answers_vector, tfidf_svd)
+        top_indices = similarities.argsort()[0][-3:][::-1]  # Get top 3 indices
 
-        # Create the input vector
-        input_vector = vectorizer.transform([preprocessed_answers])
-
-        # Find the nearest neighbors
-        _, indices = nn_model.kneighbors(input_vector, n_neighbors=3)
-
-        # Get the recommended products
-        recommended_products = data.iloc[indices[0]]
+        # Rank and display recommended products
+        recommended_products = data.iloc[top_indices]
         titles = recommended_products["Title"].tolist()
         urls = recommended_products["URL (Web)"].tolist()
         images = recommended_products["Image 1"].tolist()
@@ -121,6 +107,7 @@ def questions():
     
     # This line should never be reached as we're only allowing POST requests
     return "Method not allowed", 405
+
 
 @app.route('/nlp', methods=['GET', 'POST'])
 def nlp():
@@ -160,18 +147,11 @@ def nlp():
         processed_classes = " ".join(processed_classes)
 
         # Give more weight to label 1 and label 5
-        weighted_processed_classes = ""
-
+        weighted_processed_classes = processed_classes
         if len(predicted_labels) >= 1:
-
-            repeated_label = predicted_labels[2]
-
-        for _ in range(2):
-            weighted_processed_classes += f" {repeated_label}" 
-
-        weighted_processed_classes += " " + predicted_labels[4] + "" + predicted_labels[3] + predicted_labels[1] + predicted_labels[0]
-        #if len(predicted_labels) >= 5:
-            #weighted_processed_classes += f" {predicted_labels[4]}" * 3  # Repeat label 5 three times
+            weighted_processed_classes += f" {predicted_labels[0]}" * 3  # Repeat label 1 three times
+        if len(predicted_labels) >= 5:
+            weighted_processed_classes += f" {predicted_labels[4]}" * 3  # Repeat label 5 three times
 
         # Calculate similarity with user answers (cosine similarity)
         answers_vector = vectorizer.transform([weighted_processed_classes])
@@ -185,7 +165,7 @@ def nlp():
         recommended_images = recommended_products["Image 1"].tolist()
 
         if 'nlp-submit' in request.form:
-            return render_template('index1.html', user_input=user_input, predicted_labels=predicted_labels, processed_classes=processed_classes,weighted_processed_classes = weighted_processed_classes,
+            return render_template('index1.html', user_input=user_input, predicted_labels=predicted_labels, processed_classes=processed_classes,
                             recommended_data=zip(recommended_titles, recommended_urls, recommended_images))
 
     return render_template('index1.html')
