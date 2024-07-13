@@ -3,6 +3,6 @@ gunicorn
 pandas==1.5.3
 scikit_learn==1.2.1
 transformers==4.40.2
-numpy
+numpy==1.14.5
 nltk
 transformers
