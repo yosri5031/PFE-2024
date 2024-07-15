@@ -55,7 +55,18 @@ def preprocess_text(text):
     words = text.split()
     filtered_words = [word for word in words if word not in stop_words]
     text = ' '.join(filtered_words)
-    return text
+    return 
+exclude_words = {"LED light", "lamp", "Figurine", "Collectible", 
+                 "Crystal", "Decoration", "Home decor", "3D engraved", 
+                 "Novelty", "Keepsake", "Gift", "Decor", "Souvenir"} 
+def preprocess_tags(tags):
+  tags = str(tags)  #convert to string if there are numbers or float
+  tags = tags.strip() #remove only whitespaces from the start and end of the string
+  tags = tags.lower() #minuscule
+  tags = re.sub(",","",tags) # remove commas
+  tags = " ".join([word for word in tags.split() 
+                   if word not in exclude_words])
+  return tags
 
 def initialize_data():
     global data, vectorizer, tfidf_matrix,nn_model
@@ -63,7 +74,8 @@ def initialize_data():
     data["Description"] = data["Description"].astype(str)
     data["preprocessed_description"] = data["Description"].apply(preprocess_text)
     data["preprocessed_title"] = data["Title"].apply(preprocess_text)
-    data["preprocessed_text"] = data.apply(lambda row: " ".join(set(str(row["preprocessed_title"]).split() + str(row["preprocessed_description"]).split())), axis=1)
+    data["preprocessed_tags"] = data["Tags"].apply(preprocess_tags)
+    data["preprocessed_text"] = data.apply(lambda row: " ".join(set(str(row["preprocessed_tags"]).split() + str(row["preprocessed_title"]).split() + str(row["preprocessed_description"]).split())), axis=1)
     # Create TF-IDF matrix - expliquer ici : https://imgur.com/Zn4rxWS
 
     vectorizer = TfidfVectorizer()
@@ -87,7 +99,7 @@ def questions():
         personality = request.form['personality']
 
         # Combine all inputs into a single string
-        all_text = f"{emotions} {occasion} {interests} {audience} {personality}"
+        all_text = f" {interests} {interests}  {occasion}  {audience} {personality} {emotions} "
 
         # Preprocess user answers
         preprocessed_answers = preprocess_text(all_text)
@@ -147,11 +159,18 @@ def nlp():
         processed_classes = " ".join(processed_classes)
 
         # Give more weight to label 1 and label 5
-        weighted_processed_classes = processed_classes
+        weighted_processed_classes = ""
+
         if len(predicted_labels) >= 1:
-            weighted_processed_classes += f" {predicted_labels[0]}" * 3  # Repeat label 1 three times
-        if len(predicted_labels) >= 5:
-            weighted_processed_classes += f" {predicted_labels[4]}" * 3  # Repeat label 5 three times
+
+            repeated_label = predicted_labels[2]
+
+        for _ in range(2):
+            weighted_processed_classes += f" {repeated_label}" 
+
+        weighted_processed_classes += " " + predicted_labels[4] + "" + predicted_labels[3] + predicted_labels[1] + predicted_labels[0]
+        #if len(predicted_labels) >= 5:
+            #weighted_processed_classes += f" {predicted_labels[4]}" * 3  # Repeat label 5 three times
 
         # Calculate similarity with user answers (cosine similarity)
         answers_vector = vectorizer.transform([weighted_processed_classes])
@@ -165,7 +184,7 @@ def nlp():
         recommended_images = recommended_products["Image 1"].tolist()
 
         if 'nlp-submit' in request.form:
-            return render_template('index1.html', user_input=user_input, predicted_labels=predicted_labels, processed_classes=processed_classes,
+            return render_template('index1.html', user_input=user_input, predicted_labels=predicted_labels, processed_classes=processed_classes,weighted_processed_classes = weighted_processed_classes,
                             recommended_data=zip(recommended_titles, recommended_urls, recommended_images))
 
     return render_template('index1.html')
