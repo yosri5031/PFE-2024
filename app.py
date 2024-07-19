@@ -2,6 +2,7 @@ import re
 import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
+from langdetect import detect
 from flask import Flask, render_template, request
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -27,8 +28,8 @@ classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnl
 # Predefined options for each preference category
 options = {
     "emotions": ["Love and romance", "Happiness and joy", "Peace and tranquility", "Inspiration and motivation", "Sentimental and nostalgic"],
-    "occasion": ["Birthday", "Anniversary", "Housewarming", "Holiday celebration", "Graduation", "Retirement", "Baby shower", "Engagement", "Prom", "Valentine's Day", "New Year's Eve", "Easter", "Mother's Day", "Father's Day", "Wedding", "Bachelorette party", "Bachelor party", "Job promotion", "Thank you", "Get well soon", "Sympathy", "Congratulations", "Good luck", "Just because"],
-    "interests": ["Architecture", "Cars & Vehicules", "Religious", "Fiction", "Tools", "Human Organes", "Symbols", "Astronomy", "Plants", "Animals", "Art", "Celebrities", "Flags", "HALLOWEEN", "Quotes", "Sports", "Thanksgiving", "Maps", "Romance", "Kitchen", "Musical Instruments", "Black Lives Matter", "Cannabis", "Vegan", "Birds", "Dinosaurs", "rock and roll", "Firearms", "Dances", "Sailing", "Jazz", "Christmas", "Greek Methology", "Life Style", "Planes", "Vintage", "Alphabets", "Weapons", "Insects", "Games", "JEWELRY", "Science","Medical", "Travel", "Cats", "Circus", "Lucky charms", "Wild West", "Dogs"],
+    "occasion": ["Birthday", "Anniversary", "Housewarming", "Holiday celebration", "Graduation", "Retirement", "Baby shower", "Engagement", "Entertainment", "Valentine's Day", "New Year's Eve", "Easter", "Mother's Day", "Father's Day", "Wedding", "Bachelorette party", "Bachelor party", "Job promotion", "Thank you", "Get well soon", "Sympathy", "Congratulations", "Good luck", "Just because"],
+    "interests": ["Architecture", "Cars & Vehicules", "Religious", "Fiction", "Tools", "Human Organes", "Symbols", "Astronomy", "Plants", "Animals", "Art", "Celebrities", "Flags", "HALLOWEEN", "Quotes", "Sports", "Thanksgiving", "Maps", "Romance", "Kitchen", "Musical Instruments", "Black Lives Matter", "Cannabis", "Vegan", "Birds", "Dinosaurs", "rock and roll", "Firearms", "Dances", "Sailing", "Jazz", "Christmas", "Greek Methology", "Life Style", "Planes","Plants", "Vintage", "Alphabets", "Weapons", "Insects", "Games", "JEWELRY", "Science","Medical", "Travel", "Cats", "Circus", "Lucky charms", "Wild West", "Dogs"],
     "audience": ["Child Audience", "Teen Audience", "Adult Audience", "Senior Audience"],
     "personality": ["Deconstructionist Design", "Motorhead Chic", "Spiritual Stylista", "Narrative Garb", "Artisan Aesthetic", "Anatomical Appeal", "Symbolic Style", "Cosmic Chic", "Flora Fashion", "Animal Admirer"]
 }
@@ -41,20 +42,42 @@ def preprocess_text(text):
     text = re.sub(r'<[^>]*>', '', text)
     # Remove HTML entities
     text = re.sub(r'&[^;]*;', '', text)
-    # Remove non-alphabetic characters
-    text = re.sub(r'[^a-zA-Z]', ' ', text)
-    # Convert to lowercase
-    text = text.lower()
-    # Lemmatization
-    lemmatizer = WordNetLemmatizer()
-    words = text.split()
-    lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
-    text = ' '.join(lemmatized_words)
-    # Filter stop words
-    stop_words = set(stopwords.words('english'))
-    words = text.split()
-    filtered_words = [word for word in words if word not in stop_words]
-    text = ' '.join(filtered_words)
+    # Language detection
+    language = detect(text)
+    
+    # Preprocessing for English
+    if language == 'en':
+        # Remove non-alphabetic characters, numbers, #, \, /
+        text = re.sub(r'[^a-zA-ZÀ-ÿ]', ' ', text)
+        # Convert to lowercase
+        text = text.lower()
+        # Lemmatization
+        lemmatizer = WordNetLemmatizer()
+        words = text.split()
+        lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
+        text = ' '.join(lemmatized_words)
+        # Filter stop words
+        stop_words = set(stopwords.words('english'))
+        words = text.split()
+        filtered_words = [word for word in words if word not in stop_words]
+        text = ' '.join(filtered_words)
+    
+    # Preprocessing for French
+    elif language == 'fr':
+        # Remove non-alphabetic characters, numbers, #, \, /
+        text = re.sub(r'[^a-zA-ZàâçéèêëîïôûùüÿñæœÀÂÇÉÈÊËÎÏÔÛÙÜŸÑÆŒ]', ' ', text)
+        # Convert to lowercase
+        text = text.lower()
+        # Lemmatization
+        lemmatizer = WordNetLemmatizer()  # Lemmatizer for French is not available in NLTK, consider using a French lemmatizer library
+        words = text.split()
+        lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
+        text = ' '.join(lemmatized_words)
+        # Filter stop words
+        stop_words = set(stopwords.words('french'))
+        words = text.split()
+        filtered_words = [word for word in words if word not in stop_words]
+        text = ' '.join(filtered_words)
     return text
 
 exclude_words = {"LED light", "lamp", "Figurine", "Collectible", 
@@ -71,7 +94,7 @@ def preprocess_tags(tags):
 
 def initialize_data():
     global data, vectorizer, tfidf_matrix,nn_model
-    data = pd.read_csv("output.csv")
+    data = pd.read_csv("output_preprocessed.csv")
     data["Description"] = data["Description"].astype(str)
     data["preprocessed_description"] = data["Description"].apply(preprocess_text)
     data["preprocessed_title"] = data["Title"].apply(preprocess_text)
