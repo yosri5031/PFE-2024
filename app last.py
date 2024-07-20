@@ -9,24 +9,12 @@ import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 from langdetect import detect
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from transformers import pipeline
-import os
-import joblib
 import pandas as pd
-from flask_caching import Cache
-"""Key optimizations in this version:
-
-Added caching using Flask-Caching for the initialize_data function.
-Increased the cache size for preprocess_text and preprocess_tags functions.
-Made initialize_data run only once when the app starts, not on every request.
-Used all available cores for NearestNeighbors with n_jobs=-1.
-Added threading support when running the app with threaded=True."""
 
 app = Flask(__name__)
-
-# Configure caching
-cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 
 # Global variables
 data = None
@@ -37,7 +25,9 @@ nn_model = None
 classifier = None
 options = None
 category_order = None
-classifier_path = 'classifier_pipeline.joblib'
+
+# Load the zero-shot classification pipeline
+classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 
 # Predefined options for each preference category
 options = {
@@ -52,7 +42,6 @@ options = {
 # Order of the categories
 category_order = ["emotions", "occasion", "interests", "audience", "personality"]
 
-@lru_cache(maxsize=10000)
 def preprocess_text(text):
     # Remove HTML tags
     text = re.sub(r'<[^>]*>', '', text)
@@ -99,41 +88,35 @@ def preprocess_text(text):
 exclude_words = {"LED light", "lamp", "Figurine", "Collectible", 
                  "Crystal", "Decoration", "Home decor", "3D engraved", 
                  "Novelty", "Keepsake", "Gift", "Decor", "Souvenir"} 
-
-@lru_cache(maxsize=10000)
 def preprocess_tags(tags):
-    tags = str(tags)  #convert to string if there are numbers or float
-    tags = tags.strip() #remove only whitespaces from the start and end of the string
-    tags = tags.lower() #minuscule
-    tags = re.sub(",","",tags) # remove commas
-    tags = " ".join([word for word in tags.split() 
-                     if word not in exclude_words])
-    return tags
+  tags = str(tags)  #convert to string if there are numbers or float
+  tags = tags.strip() #remove only whitespaces from the start and end of the string
+  tags = tags.lower() #minuscule
+  tags = re.sub(",","",tags) # remove commas
+  tags = " ".join([word for word in tags.split() 
+                   if word not in exclude_words])
+  return tags
 
-@cache.cached(timeout=3600)  # Cache for 1 hour
+# Initialize data function (you need to implement this based on your data loading process)
 def initialize_data():
-    global data, vectorizer, tfidf_matrix, normalized_tfidf_matrix, nn_model, classifier
-    
-    # Load or initialize the classifier
-    if os.path.exists(classifier_path):
-        classifier = joblib.load(classifier_path)
-    else:
-        classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-        joblib.dump(classifier, classifier_path)
-    
-    # Rest of the initialization code remains the same
+    global data, vectorizer, tfidf_matrix, normalized_tfidf_matrix, nn_model, classifier, options, category_order
     data = pd.read_csv("output_preprocessed.csv")
     data["Description"] = data["Description"].astype(str)
     data["preprocessed_description"] = data["Description"].apply(preprocess_text)
     data["preprocessed_title"] = data["Title"].apply(preprocess_text)
     data["preprocessed_tags"] = data["Tags"].apply(preprocess_tags)
     data["preprocessed_text"] = data.apply(lambda row: " ".join(set(str(row["preprocessed_tags"]).split() + str(row["preprocessed_title"]).split() + str(row["preprocessed_description"]).split())), axis=1)
+    # Create TF-IDF matrix - expliquer ici : https://imgur.com/Zn4rxWS
 
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(data["preprocessed_text"])
-    nn_model = NearestNeighbors(metric='cosine', n_jobs=-1)  # Use all available cores
+    # Create and fit the NearestNeighbors model
+    nn_model = NearestNeighbors(metric='cosine')
     nn_model.fit(tfidf_matrix)
+
+    # Normalize the TF-IDF matrix
     normalized_tfidf_matrix = normalize(tfidf_matrix, norm='l2', axis=1)
+
 
 @lru_cache(maxsize=1000)
 def cached_classifier(text, labels_tuple):
@@ -225,5 +208,4 @@ def nlp():
     return render_template('index1.html')
 
 if __name__ == '__main__':
-    initialize_data()  # Initialize data when the app starts
-    app.run(threaded=True)
+    app.run()
