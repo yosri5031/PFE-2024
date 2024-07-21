@@ -2,17 +2,13 @@ from flask import Flask, render_template, request
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 import numpy as np
-from functools import lru_cache
-from concurrent.futures import ThreadPoolExecutor
 import re
-import nltk
-from nltk.stem import WordNetLemmatizer
+from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
-from langdetect import detect
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from transformers import pipeline
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 
@@ -25,63 +21,53 @@ nn_model = None
 classifier = None
 options = None
 category_order = None
+stemmer = PorterStemmer()
+stop_words = set(stopwords.words('english'))
 
-# Load the zero-shot classification pipeline
-classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+@app.before_first_request
+def load_data_and_models():
+    global data, vectorizer, tfidf_matrix, normalized_tfidf_matrix, nn_model, classifier, options, category_order
 
-# Predefined options for each preference category
-options = {
-    "emotions": ["Love and romance", "Happiness and joy", "Peace and tranquility", "Inspiration and motivation", "Sentimental and nostalgic"],
-    "occasion": ["Birthday", "Anniversary", "Housewarming", "Holiday celebration", "Graduation", "Retirement", "Baby shower", "Engagement", "Entertainment", "Valentine's Day", "New Year's Eve", "Easter", "Mother's Day", "Father's Day", "Wedding", "Bachelorette party", "Bachelor party", "Job promotion", "Thank you", "Get well soon", "Sympathy", "Congratulations", "Good luck", "Just because"],
-    "interests" : ["Architecture", "Cars & Vehicules", "Religious", "Fiction", "Tools", "Human Organes", "Symbols", "Astronomy", "Plants", "Animals", "Art", "Celebrities", "Flags", "HALLOWEEN", "Quotes", "Sports", "Thanksgiving", "Maps", "Romance", "Kitchen", "Musical Instruments", "Black Lives Matter", "Cannabis", "Vegan", "Birds", "Dinosaurs", "rock and roll", "Firearms", "Dances", "Sailing", "Jazz", "Christmas", "Life Style", "Plants", "Vintage", "Alphabets", "Weapons", "Insects", "Games", "JEWELRY", "Science", "Travel", "Cats", "Circus", "Lucky charms", "Wild West", "Dogs","Zodiac",
-           "Technology", "Nature Wonders", "Names"],
-    "audience": ["Child Audience", "Teen Audience", "Adult Audience", "Senior Audience"],
-    "personality": ["Deconstructionist Design", "Motorhead Chic", "Spiritual Stylista", "Narrative Garb", "Artisan Aesthetic", "Anatomical Appeal", "Symbolic Style", "Cosmic Chic", "Flora Fashion", "Animal Admirer"]
-}
+    # Load the zero-shot classification pipeline with a smaller model
+    classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 
-# Order of the categories
-category_order = ["emotions", "occasion", "interests", "audience", "personality"]
+    # Predefined options for each preference category
+    options = {
+        "emotions": ["Love and romance", "Happiness and joy", "Peace and tranquility", "Inspiration and motivation", "Sentimental and nostalgic"],
+        "occasion": ["Birthday", "Anniversary", "Housewarming", "Holiday celebration", "Graduation", "Retirement", "Baby shower", "Engagement", "Entertainment", "Valentine's Day", "New Year's Eve", "Easter", "Mother's Day", "Father's Day", "Wedding", "Bachelorette party", "Bachelor party", "Job promotion", "Thank you", "Get well soon", "Sympathy", "Congratulations", "Good luck", "Just because"],
+        "interests": ["Architecture", "Cars & Vehicules", "Religious", "Fiction", "Tools", "Human Organes", "Symbols", "Astronomy", "Plants", "Animals", "Art", "Celebrities", "Flags", "HALLOWEEN", "Quotes", "Sports", "Thanksgiving", "Maps", "Romance", "Kitchen", "Musical Instruments", "Black Lives Matter", "Cannabis", "Vegan", "Birds", "Dinosaurs", "rock and roll", "Firearms", "Dances", "Sailing", "Jazz", "Christmas", "Life Style", "Plants", "Vintage", "Alphabets", "Weapons", "Insects", "Games", "JEWELRY", "Science", "Travel", "Cats", "Circus", "Lucky charms", "Wild West", "Dogs","Zodiac", "Technology", "Nature Wonders", "Names"],
+        "audience": ["Child Audience", "Teen Audience", "Adult Audience", "Senior Audience"],
+        "personality": ["Deconstructionist Design", "Motorhead Chic", "Spiritual Stylista", "Narrative Garb", "Artisan Aesthetic", "Anatomical Appeal", "Symbolic Style", "Cosmic Chic", "Flora Fashion", "Animal Admirer"]
+    }
 
-#preprocessing 
+    category_order = ["emotions", "occasion", "interests", "audience", "personality"]
 
-# Compile regex patterns
-html_tag_pattern = re.compile(r'<[^>]*>')
-html_entity_pattern = re.compile(r'&[^;]*;')
-non_alpha_pattern = re.compile(r'[^a-zA-ZÀ-ÿ]')
+    # Load and preprocess data
+    data = pd.read_parquet("output_preprocessed.parquet")
+    data["Description"] = data["Description"].astype(str)
+    data["preprocessed_description"] = data["Description"].apply(preprocess_text)
+    data["preprocessed_title"] = data["Title"].apply(preprocess_text)
+    data["preprocessed_tags"] = data["Tags"].apply(preprocess_tags)
+    data["preprocessed_text"] = data.apply(lambda row: " ".join(set(str(row["preprocessed_tags"]).split() + str(row["preprocessed_title"]).split() + str(row["preprocessed_description"]).split())), axis=1)
+    # Create TF-IDF matrix
+    vectorizer = TfidfVectorizer(max_features=5000)  # Limit features to 5000 most frequent words
+    tfidf_matrix = vectorizer.fit_transform(data["preprocessed_text"])
 
-# Cache stopwords
-@lru_cache(maxsize=None)
-def get_stopwords(language):
-    return set(stopwords.words(language))
+    # Create and fit the NearestNeighbors model
+    nn_model = NearestNeighbors(metric='cosine', n_neighbors=3, algorithm='brute', n_jobs=-1)
+    nn_model.fit(tfidf_matrix)
 
-@lru_cache(maxsize=None)
+    # Normalize the TF-IDF matrix
+    normalized_tfidf_matrix = normalize(tfidf_matrix, norm='l2', axis=1)
+
 def preprocess_text(text):
-    # Remove HTML tags
-    text = html_tag_pattern.sub('', text)
-    # Remove HTML entities
-    text = html_entity_pattern.sub('', text)
-    # Language detection
-    language = detect(text)
-    
-    # Remove non-alphabetic characters
-    text = non_alpha_pattern.sub(' ', text)
-    # Convert to lowercase
-    text = text.lower()
-    
-    # Lemmatization
-    lemmatizer = WordNetLemmatizer()
-    words = text.split()
-    lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
-    
-    # Filter stop words
-    stop_words = get_stopwords('english' if language == 'en' else 'french')
-    filtered_words = [word for word in lemmatized_words if word not in stop_words]
-    
-    return ' '.join(filtered_words)
-    
+    text = re.sub(r'[^a-zA-Z\s]', '', text.lower())
+    return ' '.join([stemmer.stem(word) for word in text.split() if word not in stop_words])
+
 exclude_words = {"LED light", "lamp", "Figurine", "Collectible", 
                  "Crystal", "Decoration", "Home decor", "3D engraved", 
                  "Novelty", "Keepsake", "Gift", "Decor", "Souvenir"} 
+
 def preprocess_tags(tags):
   tags = str(tags)  #convert to string if there are numbers or float
   tags = tags.strip() #remove only whitespaces from the start and end of the string
@@ -91,35 +77,10 @@ def preprocess_tags(tags):
                    if word not in exclude_words])
   return tags
 
-# Initialize data function (you need to implement this based on your data loading process)
-def initialize_data():
-    global data, vectorizer, tfidf_matrix, normalized_tfidf_matrix, nn_model, classifier, options, category_order
-    data = pd.read_csv("output_preprocessed.csv")
-    data["Description"] = data["Description"].astype(str)
-    data["preprocessed_description"] = data["Description"].apply(preprocess_text)
-    data["preprocessed_title"] = data["Title"].apply(preprocess_text)
-    data["preprocessed_tags"] = data["Tags"].apply(preprocess_tags)
-    data["preprocessed_text"] = data.apply(lambda row: " ".join(set(str(row["preprocessed_tags"]).split() + str(row["preprocessed_title"]).split() + str(row["preprocessed_description"]).split())), axis=1)
-    # Create TF-IDF matrix - expliquer ici : https://imgur.com/Zn4rxWS
-
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(data["preprocessed_text"])
-    # Create and fit the NearestNeighbors model
-    nn_model = NearestNeighbors(metric='cosine')
-    nn_model.fit(tfidf_matrix)
-
-    # Normalize the TF-IDF matrix
-    normalized_tfidf_matrix = normalize(tfidf_matrix, norm='l2', axis=1)
-
-
-@lru_cache(maxsize=None)
-def cached_classifier(text, labels_tuple):
-    return classifier(text, list(labels_tuple))
-
-def process_category(category, user_input, options):
+def classify_text(user_input, category):
     labels = options[category]
-    result = cached_classifier(user_input, tuple(labels))
-    return result, category
+    result = classifier(user_input, labels)
+    return result['labels'][0], category
 
 @app.route('/')
 def home():
@@ -128,7 +89,6 @@ def home():
 @app.route('/questions', methods=['POST'])
 def questions():
     if request.method == 'POST':
-        initialize_data()
         emotions = request.form['emotions']
         occasion = request.form['occasion']
         interests = request.form['interests']
@@ -153,43 +113,23 @@ def questions():
 @app.route('/nlp', methods=['GET', 'POST'])
 def nlp():
     if request.method == 'POST':
-        initialize_data()
-        user_input = request.form['user_input']
-        user_input = preprocess_text(user_input)
+        user_input = preprocess_text(request.form['user_input'])
         
-        predicted_labels = []
-        seen_categories = set()
-        processed_classes = []
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(lambda cat: classify_text(user_input, cat), category_order))
 
-        for category in category_order:
-            labels = options[category]
-            result = classifier(user_input, labels)
+        predicted_labels = [label for label, _ in results]
+        processed_classes = ' '.join(predicted_labels)
 
-            for label in result["labels"]:
-                if label not in seen_categories:
-                    predicted_labels.append(label)
-                    processed_classes.append(label)
-                    seen_categories.add(label)
-                    break
+        weighted_processed_classes = f"{predicted_labels[2]} {predicted_labels[2]} {predicted_labels[4]} {predicted_labels[3]} {predicted_labels[1]} {predicted_labels[0]}"
 
-        processed_classes = " ".join(processed_classes)
-
-        weighted_processed_classes = ""
-        if len(predicted_labels) >= 1:
-            repeated_label = predicted_labels[2]
-            for _ in range(2):
-                weighted_processed_classes += f" {repeated_label}" 
-
-        weighted_processed_classes += " " + predicted_labels[4] + "" + predicted_labels[3] + predicted_labels[1] + predicted_labels[0]
-
-        # Calculate similarity with user answers (cosine similarity)
         answers_vector = vectorizer.transform([weighted_processed_classes])
         normalized_answers_vector = normalize(answers_vector, norm='l2', axis=1)
-        similarities = normalized_answers_vector.dot(normalized_tfidf_matrix.T).toarray()[0]
-        top_indices = np.argsort(similarities)[-3:][::-1]  # Get top 3 indices
+        
+        # Use NearestNeighbors for faster similarity search
+        _, top_indices = nn_model.kneighbors(normalized_answers_vector)
 
-        # Rank and display recommended products
-        recommended_products = data.iloc[top_indices]
+        recommended_products = data.iloc[top_indices[0]]
         recommended_titles = recommended_products["Title"].tolist()
         recommended_urls = recommended_products["URL (Web)"].tolist()
         recommended_images = recommended_products["Image 1"].tolist()
@@ -202,4 +142,4 @@ def nlp():
     return render_template('index1.html')
 
 if __name__ == '__main__':
-    app.run()
+    app.run(threaded=True)

@@ -42,49 +42,41 @@ options = {
 # Order of the categories
 category_order = ["emotions", "occasion", "interests", "audience", "personality"]
 
+#preprocessing 
+
+# Compile regex patterns
+html_tag_pattern = re.compile(r'<[^>]*>')
+html_entity_pattern = re.compile(r'&[^;]*;')
+non_alpha_pattern = re.compile(r'[^a-zA-ZÀ-ÿ]')
+
+# Cache stopwords
+def get_stopwords(language):
+    return set(stopwords.words(language))
+
 def preprocess_text(text):
     # Remove HTML tags
-    text = re.sub(r'<[^>]*>', '', text)
+    text = html_tag_pattern.sub('', text)
     # Remove HTML entities
-    text = re.sub(r'&[^;]*;', '', text)
+    text = html_entity_pattern.sub('', text)
     # Language detection
     language = detect(text)
     
-    # Preprocessing for English
-    if language == 'en':
-        # Remove non-alphabetic characters, numbers, #, \, /
-        text = re.sub(r'[^a-zA-ZÀ-ÿ]', ' ', text)
-        # Convert to lowercase
-        text = text.lower()
-        # Lemmatization
-        lemmatizer = WordNetLemmatizer()
-        words = text.split()
-        lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
-        text = ' '.join(lemmatized_words)
-        # Filter stop words
-        stop_words = set(stopwords.words('english'))
-        words = text.split()
-        filtered_words = [word for word in words if word not in stop_words]
-        text = ' '.join(filtered_words)
+    # Remove non-alphabetic characters
+    text = non_alpha_pattern.sub(' ', text)
+    # Convert to lowercase
+    text = text.lower()
     
-    # Preprocessing for French
-    elif language == 'fr':
-        # Remove non-alphabetic characters, numbers, #, \, /
-        text = re.sub(r'[^a-zA-ZàâçéèêëîïôûùüÿñæœÀÂÇÉÈÊËÎÏÔÛÙÜŸÑÆŒ]', ' ', text)
-        # Convert to lowercase
-        text = text.lower()
-        # Lemmatization
-        lemmatizer = WordNetLemmatizer()  # Lemmatizer for French is not available in NLTK, consider using a French lemmatizer library
-        words = text.split()
-        lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
-        text = ' '.join(lemmatized_words)
-        # Filter stop words
-        stop_words = set(stopwords.words('french'))
-        words = text.split()
-        filtered_words = [word for word in words if word not in stop_words]
-        text = ' '.join(filtered_words)
-    return text
-
+    # Lemmatization
+    lemmatizer = WordNetLemmatizer()
+    words = text.split()
+    lemmatized_words = [lemmatizer.lemmatize(word) for word in words]
+    
+    # Filter stop words
+    stop_words = get_stopwords('english' if language == 'en' else 'french')
+    filtered_words = [word for word in lemmatized_words if word not in stop_words]
+    
+    return ' '.join(filtered_words)
+    
 exclude_words = {"LED light", "lamp", "Figurine", "Collectible", 
                  "Crystal", "Decoration", "Home decor", "3D engraved", 
                  "Novelty", "Keepsake", "Gift", "Decor", "Souvenir"} 
@@ -100,7 +92,7 @@ def preprocess_tags(tags):
 # Initialize data function (you need to implement this based on your data loading process)
 def initialize_data():
     global data, vectorizer, tfidf_matrix, normalized_tfidf_matrix, nn_model, classifier, options, category_order
-    data = pd.read_csv("output_preprocessed.csv")
+    data = pd.read_parquet("output_preprocessed.parquet")
     data["Description"] = data["Description"].astype(str)
     data["preprocessed_description"] = data["Description"].apply(preprocess_text)
     data["preprocessed_title"] = data["Title"].apply(preprocess_text)
@@ -118,7 +110,6 @@ def initialize_data():
     normalized_tfidf_matrix = normalize(tfidf_matrix, norm='l2', axis=1)
 
 
-@lru_cache(maxsize=1000)
 def cached_classifier(text, labels_tuple):
     return classifier(text, list(labels_tuple))
 
@@ -167,16 +158,16 @@ def nlp():
         seen_categories = set()
         processed_classes = []
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(process_category, category, user_input, options) for category in category_order]
-            for future in futures:
-                result, category = future.result()
-                for label in result["labels"]:
-                    if label not in seen_categories:
-                        predicted_labels.append(label)
-                        processed_classes.append(label)
-                        seen_categories.add(label)
-                        break
+        for category in category_order:
+            labels = options[category]
+            result = classifier(user_input, labels)
+
+            for label in result["labels"]:
+                if label not in seen_categories:
+                    predicted_labels.append(label)
+                    processed_classes.append(label)
+                    seen_categories.add(label)
+                    break
 
         processed_classes = " ".join(processed_classes)
 
