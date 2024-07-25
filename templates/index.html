@@ -4,6 +4,8 @@
   <title>Chatbot Interface</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css">
+  <!--<link rel="stylesheet" type="text/css" href="{{url_for('static', filename='loading-bar.css')}}"/>
+  <script type="text/javascript" src="{{url_for('static', filename='loading-bar.js')}}"></script>-->
   <style>
     body {
   /*background: #B3FFAB;
@@ -23,6 +25,7 @@
   background: url('https://www.shutterstock.com/image-vector/chatbot-robo-advisor-adviser-chat-600nw-1222464061.jpg') no-repeat;
   background-size: contain;
 }
+
 
     .input--text {
       padding: 20px;
@@ -232,6 +235,20 @@ input.u-full-width::placeholder {
     background-position: 100% center;
   }
 }
+
+#loading-bar {
+            display: none;
+            width: 100%;
+            height: 30px;
+            background-color: #f0f0f0;
+            margin-top: 20px;
+        }
+        #loading-bar-fill {
+            width: 0%;
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.5s;
+        }
   </style>
 </head>
 <body>
@@ -348,18 +365,17 @@ input.u-full-width::placeholder {
 <div class="col-xs-12 col-sm-6 col-md-6 col-lg-6">
   <form method="POST" action="/nlp" id="myForm" onsubmit="return submitForm()">
      
-        <div class="col-xs-6 col-sm-6 col-md-8 col-lg-10" style="background: #B3FFAB;
-        background: -webkit-linear-gradient(to left, #c1e1c1 , #e4eaea);
-        background: linear-gradient(to left, #a4b2a4 , #586966); ">
+        <div class="col-xs-6 col-sm-6 col-md-8 col-lg-10" style="background: #ffffff;
+        ">
           <div class="box-row">
             <div class="input--text">
 
                 <!-- Add this code to your index.html template -->
                 <div id="loading" style="display: none;" >
-                  <div class="lds-default" style="background: #B3FFAB;
-                  background: -webkit-linear-gradient(to left, #c1e1c1 , #e4eaea);
-                  background: linear-gradient(to left, #a4b2a4 , #586966);  "><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+                  <div class="lds-default" style="background: #ffffff;
+                   "><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
                 </div>
+                <p id="load-time" style=" font-size : 11px;color:red; display: none;"> Loading data take approx 1 min</p> 
   <div id="questions-res" style="display: none;">
   
   <!--  <p> <h2>Recommended products for you:</h2> </p>
@@ -413,7 +429,9 @@ input.u-full-width::placeholder {
   <image id="t-rump" src="https://t4.ftcdn.net/jpg/02/11/61/95/360_F_211619589_fnRk5LeZohVD1hWInMAQkWzAdyVlS5ox.jpg" >
   <div id="quest-f">
     <div id="result"> I m Your assistant That Help Pick Best Gift Available </div> 
-    <div id="result" style="display:none;">Loading ...</div>
+    <div id="loading" style="display:none;">Loading ...</div>
+    <!--<div class="ldBar" data-min="0" data-max="100" data-duration="6000">
+    </div>-->
     <input id="ask-input" type="text" name="user_input" placeholder="Describe Your Gift Recipient / Interests" onkeypress="handleKeyPress(event)"> 
     <div id="ERRMSG" style="font-size:16px;color:red;"></div>
     <button class="button-primary" name="nlp-submit" type="submit" value="Pick My Gift" style="background-color: #43d0ca; margin-top: 15px;"> Pick My Gift </button>
@@ -434,6 +452,9 @@ input.u-full-width::placeholder {
 
   </div>
   </div>
+  <div class="gtranslate_wrapper"></div>
+<script>window.gtranslateSettings = {"default_language":"en","detect_browser_language":true,"languages":["en","fr"],"wrapper_selector":".gtranslate_wrapper","horizontal_position":"right","vertical_position":"bottom"}</script>
+<script src="https://cdn.gtranslate.net/widgets/latest/dropdown.js" defer></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script>
     // input text errors
@@ -444,14 +465,18 @@ const errorMsg = document.getElementById('errorMsg');
 const ERRMSG = document.getElementById('ERRMSG');
 
 submitButton.addEventListener('click', function(e) {
+  //document.getElementById('loading').style.display = 'block';
+  //document.getElementById('loading-bar').style.display = 'block';
+  //document.getElementById('loading-bar-fill').style.display = 'block';
   if(!interestsInput.value) {
     e.preventDefault();
     interestsInput.classList.add('error');
-    errorMsg.innerText = "Please enter interests";
+    errorMsg.innerText = "Please enter a description";
   }
   
+  }
 
-})
+)
 
   </script>
 <script>
@@ -468,6 +493,7 @@ submitButton.addEventListener('click', function(e) {
     });
   });
 
+  
 // submit (enter key submit)
 
 function handleKeyPress(event) {
@@ -499,6 +525,8 @@ if(!input.value) {
 }
 
 // Submit form if valid
+$('#loading').show();
+$('#load-time').show();
 return true;
 
 }
